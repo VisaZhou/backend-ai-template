@@ -18,6 +18,8 @@ springdoc:
       packages-to-scan: org.visage.backend.controller
   default-flat-param-object: false
 
+
+
 spring:
   application:
     name: backend-ai-template
