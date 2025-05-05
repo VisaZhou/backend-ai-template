@@ -24,10 +24,36 @@ spring:
   application:
     name: backend-ai-template
   ai:
+    # 聊天模型使用deepseek
     openai:
       api-key: sk-ddba484efb7f41dcac8ab681e43ac87f
       base-url: https://api.deepseek.com
       chat:
         options:
           model: deepseek-chat
+    # 嵌入模型使用智谱
+    zhipuai:
+      api-key: abfd0b758fa74599821941e6dfc0d5ef.FbVXRHhxNK7KKLJf
+      base-url: https://open.bigmodel.cn/api/paas
+      embedding:
+        options:
+          model: Embedding-3 # 智谱的该模型维度为 2048。
+    model:
+      embedding: zhipuai
+    # 向量数据库存储使用milvus
+    vectorstore:
+      milvus:
+        client:
+          host: "localhost"
+          port: 19530
+#          username:
+#          password:
+        databaseName: "default"
+        collectionName: "milvus_ai_collection" # 集合名称
+        embeddingDimension: 2048  # 根据嵌入模型维度调整，如果已经创建了不是这个维度的集合，需要删除后重新创建。
+        indexType: IVF_FLAT
+        metricType: COSINE
+        initialize-schema: true # 首次运行需初始化集合
+        metadata-field-name: field_json # 用于存储内容哈希值的字段名称
+
 
