@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -34,15 +36,22 @@ public class DeepseekChatController {
 
     @GetMapping(value = "/ai/generateStream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "流式生成文本", description = "使用 SSE 实时返回生成结果")
-    @ApiResponse(
-            responseCode = "200",
-            description = "流式响应",
-            content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE)
-    )
-    public Flux<ChatResponse> generateStream(
-            @RequestParam(value = "message", defaultValue = "Tell me a joke") String message
-    ) {
+    @ApiResponse(responseCode = "200", description = "流式响应", content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE))
+    public Flux<ChatResponse> generateStream(@RequestParam(value = "message", defaultValue = "Tell me a joke") String message) {
         Prompt prompt = new Prompt(new UserMessage(message));
+        return chatModel.stream(prompt);
+    }
+
+    @GetMapping(value = "/ai/memory", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "聊天记忆", description = "先存在内存（ConcurrentHashMap）中，后期可改为 JDBC 存储")
+    @ApiResponse(responseCode = "200", description = "流式响应", content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE))
+    public Flux<ChatResponse> memory(@RequestParam(value = "message", defaultValue = "我叫周徐进") String message) {
+        // Create a memory instance
+        ChatMemory chatMemory = MessageWindowChatMemory.builder().build();
+        String conversationId = "007";
+        UserMessage userMessage = new UserMessage(message);
+        chatMemory.add(conversationId, userMessage);
+        Prompt prompt = new Prompt(chatMemory.get(conversationId));
         return chatModel.stream(prompt);
     }
 }
