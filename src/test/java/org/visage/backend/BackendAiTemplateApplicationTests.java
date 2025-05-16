@@ -9,7 +9,9 @@ import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.visage.backend.pojo.res.ActorFilmRes;
-import java.util.Map;import static org.junit.jupiter.api.Assertions.assertEquals;import static org.junit.jupiter.api.Assertions.assertNotNull;
+import java.util.Map;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 
 @SpringBootTest

@@ -1,15 +1,17 @@
-package org.visage.tool;
+package org.visage.backend.tool;
 
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+@Component
 public class DateTimeTool {
 
-    @Tool(description = "获取系统的当前时间")
+    @Tool(description = "获取当前时间")
     String getCurrentDateTime() {
         return LocalDateTime.now().atZone(LocaleContextHolder.getTimeZone().toZoneId()).toString();
     }

@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.visage.tool.DateTimeTool;
 
 
 @SpringBootTest

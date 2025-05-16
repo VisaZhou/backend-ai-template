@@ -21,6 +21,9 @@ springdoc:
 
 
 spring:
+  # 必须关闭banner, STDIO transport 才能正常工作
+  main:
+    banner-mode: off
   application:
     name: backend-ai-template
   ai:
@@ -55,5 +58,16 @@ spring:
         metricType: COSINE
         initialize-schema: true # 首次运行需初始化集合
         metadata-field-name: field_json # 用于存储内容哈希值的字段名称
+    # mcp服务端配置
+    mcp:
+      server:
+        enabled: true # 是否启用 mcp 服务端
+        stdio: false # 是否启用标准输入输出
+        name: mcp-server # 用于识别的服务器名称
+        version: 1.0.0 # 服务器版本
+        type: sync # 服务器类型（同步/异步）
+        sse-message-endpoint: /mcp/messages # 客户端用来发送消息的 Web 传输的自定义 SSE 消息端点路径
+        sse-endpoint: /sse #用于 Web 传输的自定义 SSE 端点路径
+
 
 
