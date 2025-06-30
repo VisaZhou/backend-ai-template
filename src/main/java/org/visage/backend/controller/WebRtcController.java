@@ -5,6 +5,7 @@ import org.kurento.client.KurentoClient;
 import org.kurento.client.MediaPipeline;
 import org.kurento.client.WebRtcEndpoint;
 import org.springframework.web.bind.annotation.*;
+import org.visage.backend.exception.ServiceException;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,10 +28,31 @@ public class WebRtcController {
     // 存储所有会话
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
 
+    private void releaseSession(Session session) {
+        if (session != null) {
+            try {
+                // 释放 publisherEndpoint
+                if (session.publisherEndpoint != null) {
+                    session.publisherEndpoint.release();
+                }
+                // 释放 subscriberEndpoint
+                if (session.subscriberEndpoint != null) {
+                    session.subscriberEndpoint.release();
+                }
+                // 释放管道
+                if (session.pipeline != null) {
+                    session.pipeline.release();
+                }
+            } catch (Exception e) {
+                throw new ServiceException("释放资源时出错: " + e.getMessage());
+            }
+        }
+    }
+
     // 提供简单的方式生成 sessionId（生产可换JWT）
     private String getSessionId(Map<String, Object> payload) {
         Object sid = payload.get("sessionId");
-        if (sid == null) throw new IllegalArgumentException("Missing sessionId");
+        if (sid == null) throw new ServiceException("sessionId 不能为空");
         return sid.toString();
     }
 
@@ -39,8 +61,13 @@ public class WebRtcController {
         String sessionId = getSessionId(payload);
         String sdpOffer = (String) payload.get("sdp");
 
-        // 复用已有session，或者新建
-        Session session = sessions.computeIfAbsent(sessionId, id -> new Session());
+        // 如果之前有 Session，先全部释放
+        Session oldSession = sessions.remove(sessionId);
+        this.releaseSession(oldSession);
+
+        // 新建一个 Session
+        Session session = new Session();
+        sessions.put(sessionId, session);
 
         // 创建 pipeline（如果未创建）
         if (session.pipeline == null) {
@@ -62,10 +89,6 @@ public class WebRtcController {
         // 处理 SDP offer 并生成 answer
         String sdpAnswer = session.publisherEndpoint.processOffer(sdpOffer);
         session.publisherEndpoint.gatherCandidates();
-
-        System.out.println("Received SDP offer: " + sdpOffer);
-        System.out.println("Generated SDP answer: " + sdpAnswer);
-
         return Map.of("sdp", sdpAnswer);
     }
 
@@ -80,13 +103,12 @@ public class WebRtcController {
         );
 
         Session session = sessions.get(sessionId);
-        System.out.println("publisherOffer Session hash: " + session.hashCode());
-        System.out.println("publisherOffer created publisherEndpoint: " + session.publisherEndpoint);
         if (session == null || session.publisherEndpoint == null) {
-            // 先缓存
+            // 如果 publisherEndpoint 还未创建，先缓存候选者
             sessions.computeIfAbsent(sessionId, id -> new Session())
                     .publisherCandidates.add(ice);
         } else {
+            // 如果已创建，直接添加候选者
             session.publisherEndpoint.addIceCandidate(ice);
         }
     }
@@ -94,28 +116,8 @@ public class WebRtcController {
     @PostMapping("/stop")
     public void stopPublisher(@RequestBody Map<String, Object> payload) {
         String sessionId = getSessionId(payload);
-
         Session session = sessions.remove(sessionId);
-        if (session != null) {
-            try {
-                if (session.publisherEndpoint != null) {
-                    session.publisherEndpoint.release();
-                    System.out.println("Publisher endpoint released.");
-                }
-                if (session.subscriberEndpoint != null) {
-                    session.subscriberEndpoint.release();
-                    System.out.println("Subscriber endpoint released.");
-                }
-                if (session.pipeline != null) {
-                    session.pipeline.release();
-                    System.out.println("Pipeline released.");
-                }
-            } catch (Exception e) {
-                System.err.println("Error releasing resources: " + e.getMessage());
-            }
-        } else {
-            System.out.println("No active session found: " + sessionId);
-        }
+        this.releaseSession(session);
     }
 
 
@@ -126,14 +128,13 @@ public class WebRtcController {
 
         Session session = sessions.get(sessionId);
         if (session == null || session.publisherEndpoint == null) {
-            throw new IllegalStateException("Publisher must be initialized first");
+            throw new ServiceException("当前用户不在线");
         }
 
         session.subscriberEndpoint = new WebRtcEndpoint.Builder(session.pipeline).build();
         session.subscriberEndpoint.setStunServerAddress("stun.l.google.com");
         session.subscriberEndpoint.setStunServerPort(19302);
         session.publisherEndpoint.connect(session.subscriberEndpoint);
-
         // 添加之前收到的ICE
         for (IceCandidate ice : session.subscriberCandidates) {
             session.subscriberEndpoint.addIceCandidate(ice);
@@ -142,7 +143,6 @@ public class WebRtcController {
 
         String sdpAnswer = session.subscriberEndpoint.processOffer(sdpOffer);
         session.subscriberEndpoint.gatherCandidates();
-
         return Map.of("sdp", sdpAnswer);
     }
 
@@ -156,7 +156,6 @@ public class WebRtcController {
 
         // end-of-candidates 情况
         if (candidateStr == null) {
-            System.out.println("收到 end-of-candidates: " + c);
             return;
         }
 
@@ -164,8 +163,6 @@ public class WebRtcController {
         int sdpMLineIndex = 0;
         if (sdpMLineIndexObj instanceof Number) {
             sdpMLineIndex = ((Number) sdpMLineIndexObj).intValue();
-        } else {
-            System.out.println("sdpMLineIndex 缺失，默认设为0: " + c);
         }
 
         IceCandidate ice = new IceCandidate(
@@ -176,11 +173,11 @@ public class WebRtcController {
 
         Session session = sessions.get(sessionId);
         if (session == null || session.subscriberEndpoint == null) {
-            System.out.println("缓存候选者: " + ice.getCandidate());
+            // 如果 subscriberEndpoint 还未创建，先缓存候选者
             sessions.computeIfAbsent(sessionId, id -> new Session())
                     .subscriberCandidates.add(ice);
         } else {
-            System.out.println("添加候选者到 subscriberEndpoint: " + ice.getCandidate());
+            // 如果已创建，直接添加候选者
             session.subscriberEndpoint.addIceCandidate(ice);
         }
     }
@@ -192,7 +189,7 @@ public class WebRtcController {
 
         Session session = sessions.get(sessionId);
         if (session == null || session.subscriberEndpoint == null) {
-            throw new IllegalStateException("Subscriber must be initialized first");
+            throw new ServiceException("Subscriber 未初始化或已停止");
         }
         session.subscriberEndpoint.processAnswer(sdpAnswer);
     }
