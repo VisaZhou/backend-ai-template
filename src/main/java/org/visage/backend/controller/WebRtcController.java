@@ -76,7 +76,8 @@ public class WebRtcController {
         // 创建 publisherEndpoint（如果未创建）
         if (session.publisherEndpoint == null) {
             session.publisherEndpoint = new WebRtcEndpoint.Builder(session.pipeline).build();
-            session.publisherEndpoint.setStunServerAddress("stun.l.google.com");
+            // 设置 STUN 服务器地址（可选，内网不需要设置）
+            //session.publisherEndpoint.setStunServerAddress("stun.l.google.com");
             session.publisherEndpoint.setStunServerPort(19302);
         }
 
@@ -132,7 +133,8 @@ public class WebRtcController {
         }
 
         session.subscriberEndpoint = new WebRtcEndpoint.Builder(session.pipeline).build();
-        session.subscriberEndpoint.setStunServerAddress("stun.l.google.com");
+        // 设置 STUN 服务器地址（可选，内网不需要设置）
+        //session.subscriberEndpoint.setStunServerAddress("stun.l.google.com");
         session.subscriberEndpoint.setStunServerPort(19302);
         session.publisherEndpoint.connect(session.subscriberEndpoint);
         // 添加之前收到的ICE
