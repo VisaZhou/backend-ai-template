@@ -10,10 +10,13 @@ import org.visage.backend.exception.ServiceException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * WebRTC 控制器，用于局域网 LAN 环境下的实时视频通信。
+ */
 @RestController
-@RequestMapping("/api/signal")
-public class WebRtcController {
-
+@RequestMapping("/api/lan")
+public class WebRtcLANController {
+    // 默认的 localhost:8888 Kurento 服务器地址
     private final KurentoClient kurento = KurentoClient.create();
 
     // 用 sessionId 区分多个会话
@@ -78,7 +81,7 @@ public class WebRtcController {
             session.publisherEndpoint = new WebRtcEndpoint.Builder(session.pipeline).build();
             // 设置 STUN 服务器地址（可选，内网不需要设置）
             //session.publisherEndpoint.setStunServerAddress("stun.l.google.com");
-            session.publisherEndpoint.setStunServerPort(19302);
+            //session.publisherEndpoint.setStunServerPort(19302);
         }
 
         // 添加之前缓存的 ICE candidate
@@ -135,7 +138,7 @@ public class WebRtcController {
         session.subscriberEndpoint = new WebRtcEndpoint.Builder(session.pipeline).build();
         // 设置 STUN 服务器地址（可选，内网不需要设置）
         //session.subscriberEndpoint.setStunServerAddress("stun.l.google.com");
-        session.subscriberEndpoint.setStunServerPort(19302);
+        //session.subscriberEndpoint.setStunServerPort(19302);
         session.publisherEndpoint.connect(session.subscriberEndpoint);
         // 添加之前收到的ICE
         for (IceCandidate ice : session.subscriberCandidates) {
